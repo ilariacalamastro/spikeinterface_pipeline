@@ -9,7 +9,7 @@ A spike sorting pipeline for extracellular electrophysiology, built on [SpikeInt
 1. Open `Pipeline_project/main_pipeline_merged_PROTOTYPE.ipynb`
 2. In the **PATHS** cell, set `FORMAT` and point the matching path variable to your data
 3. In the **FORMAT-SPECIFIC PARAMETERS** cell, check the sorter and frequency settings, and set `manual_probe_file` if your recording has no embedded probe geometry
-4. Set `test_duration_s = 5` for a quick test run, then `None` for the full recording
+4. Set a `test_duration_s` to clip the first part of the recording (in seconds) or set to `None` to run the full recording
 5. **Kernel → Restart & Run All**
 6. Find all outputs in `base_folder/` (set in the PATHS cell)
 
@@ -38,7 +38,7 @@ neo           # Open Ephys
 
 ---
 
-## Which cells do I need to edit?
+## Which cells to edit?
 
 | Cell | What it does | Edit? |
 |---|---|---|
@@ -54,7 +54,7 @@ neo           # Open Ephys
 
 ---
 
-## Step 1 — Set your format and paths
+## Step 1: Set format and paths
 
 ```python
 FORMAT = 'mcs'   # 'spikeglx' | 'openephys' | 'mcs'
@@ -68,15 +68,13 @@ mcs_file         = Path(r'C:\path\to\recording.h5')
 
 ---
 
-## Step 2 — Check the parameters
+## Step 2: Check parameters
 
 ### Test clipping
 
 ```python
-test_duration_s = 5    # clips to 5 s for a quick test — set to None for the full recording
+test_duration_s = 120    # i.e. clips to 120 s for a quick test, set to None to run the full recording (default)
 ```
-
-Always do a short test run first. Sorting a full recording can take minutes to hours.
 
 ### Format-specific settings
 
@@ -105,7 +103,7 @@ cref_reference = 'local'
 
 ### Probe geometry
 
-SpikeGLX files contain embedded probe geometry and the pipeline uses it automatically. MCS and Open Ephys recordings often do not — in that case the PROBE SETUP cell prints:
+Neuropixels recordings contain embedded probe geometry and the pipeline uses it automatically. MCS and Open Ephys recordings often do not, in that case the PROBE SETUP cell prints:
 
 ```
 [probe] Dummy probe (fallback): N channels spaced 1000 um apart.
@@ -144,8 +142,6 @@ After sorting, units are kept only if they pass all three thresholds:
 | `isi_violations_ratio_thresh` | `1.0` | Few refractory period violations. Lower = stricter. |
 | `presence_ratio_thresh` | `0.6` | Unit fires throughout the recording. Lower if recording is short or noisy. |
 
-For short recordings (< 1 min), `presence_ratio` will be NaN and is skipped automatically.
-
 ---
 
 ## Output files
@@ -174,9 +170,6 @@ The `preprocess/` folder is reused automatically on re-runs to skip the preproce
 ---
 
 ## Troubleshooting
-
-**WinError 32 — file locked during sorting**
-The sorter (especially HerdingSpikes) can keep output files open even after restarting the kernel. Open Task Manager → Details tab, find leftover `python.exe` processes from the previous session, and end them. Then re-run the sorting cell.
 
 **All units removed after quality filtering**
 Open `quality_metrics.csv` and inspect the values. Common causes:
