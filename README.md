@@ -1,4 +1,4 @@
-# spikeinterface_pipeline
+# Spikeinterface pipeline
 
 A spike sorting pipeline for extracellular electrophysiology, built on [SpikeInterface](https://spikeinterface.readthedocs.io/). Supports SpikeGLX, Open Ephys, and Multi-Channel Systems (MCS) data formats.
 
