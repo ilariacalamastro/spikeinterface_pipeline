@@ -1,19 +1,17 @@
 # spikeinterface_pipeline
 
-A spike sorting pipeline for extracellular electrophysiology, built on [SpikeInterface](https://spikeinterface.readthedocs.io/). Supports SpikeGLX, Open Ephys, and Multi-Channel Systems (MCS) data formats.
+**A spike sorting pipeline for extracellular electrophysiology, built on [SpikeInterface](https://spikeinterface.readthedocs.io/).** One notebook for SpikeGLX, Open Ephys, and Multi-Channel Systems (MCS) recordings.
 
 ---
 
 ## Quick start
 
 1. Open `Pipeline_project/main_pipeline_merged_PROTOTYPE.ipynb`
-2. In the **PATHS** cell, set `FORMAT` and point the matching path variable to your data
-3. In the **FORMAT-SPECIFIC PARAMETERS** cell, check the sorter and frequency settings, and set `manual_probe_file` if your recording has no embedded probe geometry
-4. Set `test_duration_s = 5` for a quick test run, then `None` for the full recording
-5. **Kernel → Restart & Run All**
-6. Find all outputs in `base_folder/` (set in the PATHS cell)
+2. **Set format and paths** — in the first cell, set `FORMAT` and point the matching path variable at your data
+3. **Check parameters** — in the second cell, review the sorter and filter settings, set `manual_probe_file` if your recording has no embedded geometry, and start with `test_duration_s = 3` for a quick test (use `None` for the full recording)
+4. **Kernel → Restart & Run All**
 
-> **Only the first two cells need editing.** Everything else runs automatically.
+> Only the first two cells need editing. Everything else runs automatically, and all outputs land in `base_folder/`.
 
 ---
 
@@ -26,35 +24,16 @@ h5py          # MCS .h5 files
 neo           # Open Ephys
 ```
 
-**Spike sorters** (install separately):
-
-| Sorter | Recommended for |
-|---|---|
-| KiloSort 4 | SpikeGLX (Neuropixels) |
-| HerdingSpikes | MCS MEA |
-| SpykingCircus 2, MountainSort 5, Tridesclous 2 | MCS, Open Ephys |
-
+**Spike sorters** (install separately): KiloSort 4, MountainSort 5, Tridesclous 2, SpykingCircus 2, HerdingSpikes.
 **Optional:** `spikeinterface_gui` for the interactive unit viewer.
 
 ---
 
-## Which cells do I need to edit?
+## Configure
 
-| Cell | What it does | Edit? |
-|---|---|---|
-| **PATHS** | Data format, file locations, output folder | **Yes — every run** |
-| **FORMAT-SPECIFIC PARAMETERS** | Sorter, filter, probe map, thresholds | **Yes — check each run** |
-| LOAD | Reads the recording from disk | No |
-| PROBE SETUP | Attaches electrode geometry | No |
-| PREPROCESSING | Highpass filter, bad channel removal, common reference | No |
-| SPIKE SORTING | Runs the sorter | No |
-| SORTING ANALYZER | Computes waveforms, templates, metrics | No |
-| QUALITY METRICS / FILTERING | Filters units by quality | No |
-| SAVE / VIEWER | Saves results, opens interactive viewer | No |
+Both editable cells are at the top of the notebook.
 
----
-
-## Step 1 — Set your format and paths
+### Format and paths
 
 ```python
 FORMAT = 'mcs'   # 'spikeglx' | 'openephys' | 'mcs'
@@ -64,136 +43,80 @@ openephys_folder = Path(r'C:\path\to\openephys_session')
 mcs_file         = Path(r'C:\path\to\recording.h5')
 ```
 
-`base_folder` (where all outputs are saved) is set per-format just below the paths.
-
----
-
-## Step 2 — Check the parameters
-
-### Test clipping
-
-```python
-test_duration_s = 5    # clips to 5 s for a quick test — set to None for the full recording
-```
-
-Always do a short test run first. Sorting a full recording can take minutes to hours.
+`base_folder` (where outputs are saved) is set per format just below the paths.
 
 ### Format-specific settings
 
-**SpikeGLX**
-```python
-stream_name    = 'imec0.ap'   # change to imec1.ap etc. for other probes
-sorter         = 'kilosort4'
-freq_min       = 400          # highpass cutoff (Hz)
-cref_reference = 'global'
-```
+| Format | `sorter` | `freq_min` | Notes |
+|---|---|---|---|
+| SpikeGLX | `kilosort4` | 400 | `stream_name = 'imec0.ap'` — geometry read from the file automatically |
+| Open Ephys | `tridesclous2` | 300 | set `stream_name` to your recording node |
+| MCS | `mountainsort5` | 200 | `use_raw = False` for `.h5`, `True` for `.raw` |
 
-**Open Ephys**
-```python
-stream_name = 'Signals CH'   # run si.get_neo_streams() to list your streams
-sorter      = 'tridesclous2'
-freq_min    = 300
-```
-
-**MCS**
-```python
-use_raw        = False           # False = .h5 export from Multi Channel DataManager; True = .raw binary
-sorter         = 'herdingspikes' # or 'spykingcircus2', 'mountainsort5'
-freq_min       = 200
-cref_reference = 'local'
-```
+To list Open Ephys streams: `si.get_neo_streams('openephysbinary', openephys_folder)`.
 
 ### Probe geometry
 
-SpikeGLX files contain embedded probe geometry and the pipeline uses it automatically. MCS and Open Ephys recordings often do not — in that case the PROBE SETUP cell prints:
-
-```
-[probe] Dummy probe (fallback): N channels spaced 1000 um apart.
-```
-
-This means the sorter cannot use spatial information between channels. To provide the real geometry, set `manual_probe_file`:
+SpikeGLX files carry their geometry and it is used automatically. MCS and Open Ephys recordings often do not — set `manual_probe_file` to provide it:
 
 ```python
-manual_probe_file = r'C:\path\to\my_probe.npy'   # see supported formats below
+manual_probe_file = r'C:\path\to\my_probe.npy'
 ```
-
-Supported formats:
 
 | Format | Notes |
 |---|---|
-| `.json` | Native probeinterface format — full probe info and wiring included. [Docs](https://probeinterface.readthedocs.io/en/main/format_spec.html) |
-| `.prb` | Legacy klusta / spyking-circus format — wiring included. [Docs](https://probeinterface.readthedocs.io/en/main/examples/ex_06_import_export_to_file.html) |
-| `.csv` | Two-column (x, y) position table in µm, rows ordered to match recording channels. [Docs](https://probeinterface.readthedocs.io/en/main/examples/ex_06_import_export_to_file.html) |
-| `.npy` | NumPy array of shape `(n_channels, 2)` with (x, y) positions in µm, rows ordered to match recording channels |
+| `.json` | Native probeinterface — full probe info and wiring included |
+| `.prb` | Legacy klusta / spyking-circus format — wiring included |
+| `.csv` | Two-column (x, y) positions in µm, rows ordered to match the channels |
+| `.npy` | `(n_channels, 2)` array of (x, y) positions in µm, same row order |
 
-When the file is loaded, the PROBE SETUP cell prints the full channel → position mapping so you can verify it looks correct before sorting.
+If no file is given and none is embedded, the pipeline builds a **dummy probe** so the sorter can still run. Choose its layout with `dummy_probe_type` (`'linear'`, `'tetrode'`, or `'grid'`); channels are then treated with no meaningful spatial relationship. The PROBE SETUP cell prints the channel → position mapping so you can check it before sorting.
 
-**Optional channel labelling:** if you want channels labelled by electrode name rather than hardware ID, add:
-```python
-channel_label_csv = r'C:\path\to\labels.csv'   # columns: channel_index, electrode_label
-```
-This prints `channel_id → electrode_label` for verification and renames channels throughout the pipeline.
+To label channels by electrode name instead of hardware ID, set `channel_label_csv` (columns: `channel_index, electrode_label`).
 
 ### Quality filtering
 
-After sorting, units are kept only if they pass all three thresholds:
+Units are kept only if they pass every threshold:
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `amplitude_cutoff_thresh` | `0.1` | Spike amplitudes are not cut off by the detection threshold. Lower = stricter. |
-| `isi_violations_ratio_thresh` | `1.0` | Few refractory period violations. Lower = stricter. |
-| `presence_ratio_thresh` | `0.6` | Unit fires throughout the recording. Lower if recording is short or noisy. |
+| `amplitude_cutoff_thresh` | `0.1` | Amplitudes not clipped by the detection threshold. Lower = stricter. |
+| `isi_violations_ratio_thresh` | `1.0` | Few refractory-period violations. Lower = stricter. |
+| `presence_ratio_thresh` | `0.6` | Unit fires throughout the recording. Lower for short/noisy data. |
 
-For short recordings (< 1 min), `presence_ratio` will be NaN and is skipped automatically.
+For short recordings, `amplitude_cutoff` and `presence_ratio` may be NaN — those checks are skipped automatically.
 
 ---
 
-## Output files
+## Outputs
 
-Everything is saved inside `base_folder/`:
+Everything is written inside `base_folder/`:
 
 ```
-base_folder/
-├── preprocess/              # preprocessed binary (cached — re-running reloads this)
-├── <sorter>_output/         # raw sorter output files
-├── analyzer/                # SortingAnalyzer with waveforms, templates, and metrics
-├── quality_metrics.csv      # one row per unit: firing rate, SNR, ISI violations, etc.
-├── bad_channels.csv         # channels removed during preprocessing
-└── pipeline_run_log.json    # record of parameters used and unit counts
+preprocess/            # cached preprocessed binary (reused on re-runs)
+<sorter>_output/       # raw sorter output
+analyzer/              # SortingAnalyzer: waveforms, templates, metrics
+quality_metrics.csv    # one row per unit
+bad_channels.csv       # channels removed during preprocessing
+pipeline_run_log.json  # parameters used and unit counts
 ```
 
-To reopen the interactive viewer on a saved result:
+Delete `preprocess/` to force reprocessing from scratch. To reopen a saved result in the viewer:
+
 ```python
 import spikeinterface.full as si, spikeinterface_gui
 analyzer = si.load_sorting_analyzer(r'C:\path\to\base_folder\analyzer')
 spikeinterface_gui.run_mainwindow(analyzer)
 ```
 
-The `preprocess/` folder is reused automatically on re-runs to skip the preprocessing step. Delete it to force reprocessing from scratch.
-
 ---
 
 ## Troubleshooting
 
-**WinError 32 — file locked during sorting**
-The sorter (especially HerdingSpikes) can keep output files open even after restarting the kernel. Open Task Manager → Details tab, find leftover `python.exe` processes from the previous session, and end them. Then re-run the sorting cell.
+**All units removed after filtering** — open `quality_metrics.csv` and loosen the thresholds (e.g. `amplitude_cutoff_thresh = 0.2`, `isi_violations_ratio_thresh = 2.0`).
 
-**All units removed after quality filtering**
-Open `quality_metrics.csv` and inspect the values. Common causes:
-- Short recording (< 1 min): `presence_ratio` is NaN — skipped automatically, not the issue
-- Very noisy data: try loosening `amplitude_cutoff_thresh` (e.g. `0.2`) or `isi_violations_ratio_thresh` (e.g. `2.0`)
+**Sorter not found** — check `si.get_installed_sorters()`.
 
-**Sorter not found**
-```python
-import spikeinterface as si
-si.get_installed_sorters()
-```
+**Dummy probe used** — the PROBE SETUP cell reports a dummy probe when no geometry was found. Set `manual_probe_file` and re-run from the LOAD cell.
 
-**Open Ephys stream name not found**
-```python
-import spikeinterface as si
-si.get_neo_streams('openephys', r'C:\path\to\session')
-```
-
-**Probe not attached / dummy probe used**
-The PROBE SETUP cell prints `[probe] Dummy probe (fallback)` if no geometry was found. Set `manual_probe_file` in the parameters cell and re-run from the LOAD cell downward.
+**WinError 32 (file locked)** — a sorter process from a previous run is still holding the output files. End leftover `python.exe` processes in Task Manager, then re-run the sorting cell.
