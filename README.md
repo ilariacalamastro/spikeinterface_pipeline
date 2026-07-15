@@ -74,14 +74,22 @@ manual_probe_file = r'C:\path\to\my_probe.npy'
 
 | Format | Notes |
 |---|---|
-| `.json` | Native probeinterface — full probe info and wiring included |
-| `.prb` | Legacy klusta / spyking-circus format — wiring included |
-| `.csv` | Two-column (x, y) positions in µm, rows ordered to match the channels |
-| `.npy` | `(n_channels, 2)` array of (x, y) positions in µm, same row order |
+| `.json` | Native probeinterface — full probe info **and wiring** included |
+| `.prb` | Legacy klusta / spyking-circus format — full probe info **and wiring** included |
+| `.csv` | Two-column (x, y) positions in µm, rows ordered to match the channels — **no wiring info** |
+| `.npy` | `(n_channels, 2)` array of (x, y) positions in µm, same row order — **no wiring info** |
 
 If no file is given and none is embedded, the pipeline builds a **dummy probe** so the sorter can still run. Choose its layout with `dummy_probe_type` (`'linear'`, `'tetrode'`, or `'grid'`); channels are then treated with no meaningful spatial relationship. The PROBE SETUP cell prints the channel → position mapping so you can check it before sorting.
 
-To label channels by electrode name instead of hardware ID, set `channel_label_csv` (columns: `channel_id`, `electrode_label`).
+### Channel–electrode mapping (optional)
+
+`.json` and `.prb` probe files embed the full channel-to-electrode wiring, so no extra step is needed. For `.csv` and `.npy` files (positions only), the pipeline assumes **identity wiring** — channel 0 maps to electrode 0, channel 1 to electrode 1, and so on. If your physical wiring does not follow this order (e.g. channel 1 is wired to electrode 3), you can supply a separate CSV to set the correct labels:
+
+```python
+channel_label_csv = r'C:\path\to\channel_electrode_map.csv'
+```
+
+The CSV must have two columns: `channel_id` (matching the IDs printed by the PROBE SETUP cell) and `electrode_label` (the label to assign). Leave `channel_label_csv = None` if your wiring is already correct or already embedded in the probe file you provided.
 
 ### Test clipping
 
@@ -101,6 +109,15 @@ Units are kept only if they pass every threshold:
 | `presence_ratio_thresh` | `0.6` | Unit fires throughout the recording. Lower for short/noisy data. |
 
 For short recordings, `amplitude_cutoff` and `presence_ratio` may be NaN — those checks are skipped automatically.
+
+### GUI launchers
+
+Both viewers are off by default so **Kernel → Restart & Run All** completes without blocking. Enable them in the second cell when you want to inspect results interactively:
+
+```python
+launch_unitrefine_gui = True   # UnitRefine — interactive unit curation
+launch_sigui          = True   # SpikeInterface interactive viewer
+```
 
 ---
 
